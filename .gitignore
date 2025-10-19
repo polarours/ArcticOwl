@@ -39,3 +39,8 @@
 
 # debug information files
 *.dwo
+
+# IDEs and editors
+.idea/
+.vscode/
+*.code-workspace
