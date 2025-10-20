@@ -11,6 +11,7 @@
 #include "core/video_capture.h"
 #include "core/video_processor.h"
 #include "modules/network/network_server.h"
+#include "arctic_owl/version.h"
 
 namespace ArcticOwl {
 namespace Modules {
@@ -61,7 +62,7 @@ MainWindow::~MainWindow()
 void MainWindow::setupUI()
 {
     // 设置窗口属性
-    setWindowTitle("ArcticOwl");
+    setWindowTitle(QStringLiteral("ArcticOwl v%1").arg(QString::fromLatin1(ArcticOwl::Version::kString)));
     resize(1200,  800);
 
     // 创建中央部件

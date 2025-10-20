@@ -22,6 +22,8 @@
 ## 项目概览
 ArcticOwl 可用于安防、工业等场景的原型验证。它接入摄像头或 IP 视频流，执行传统视觉检测算法，将结果叠加到 Qt 界面，并通过 TCP 向客户端广播处理后的帧与警报。
 
+当前版本：**v0.1.1**
+
 
 ## 核心特性
 - **多种输入**：支持本地 UVC 摄像头、RTSP 流、RTMP 流。
@@ -145,6 +147,7 @@ include/
 - 可扩展网络协议：加入消息类型字节或使用 JSON/Protobuf。
 - 性能建议：丢弃过时帧、拆分 UI 与算法线程、对高分辨率流做降采样。
 - `tests/` 目录预留给未来的自动化测试（例如 GoogleTest）。
+- 版本管理：在 `CMakeLists.txt` 的 `project(ArcticOwl VERSION …)` 设置语义版本，构建过程会生成 `include/arctic_owl/version.h`，代码可直接读取 `ArcticOwl::Version::kString` 等常量。
 
 
 ## 后续优化计划

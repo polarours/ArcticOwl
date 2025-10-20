@@ -44,3 +44,12 @@
 .idea/
 .vscode/
 *.code-workspace
+
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# Generated files
+generated/
+*/generated/

@@ -22,6 +22,8 @@ Language: English | [中文](README_zh_CN.md)
 ## Overview
 ArcticOwl is a desktop application designed for security and industrial monitoring prototypes. It ingests live video from cameras or IP streams, applies classic computer-vision detectors, overlays results in a Qt UI, and broadcasts processed frames plus alert messages to TCP clients.
 
+Current release: **v0.1.1**
+
 
 ## Highlights
 - **Multiple sources**: local UVC camera, RTSP stream, or RTMP stream.
@@ -145,6 +147,7 @@ include/
 - Consider extending the network wire format with a message type byte or a higher-level protocol (JSON/Protobuf).
 - Performance tips: drop unused frames, decouple UI and processing threads, and explore downsampling for heavy streams.
 - The `tests/` directory is reserved for future automated tests (GoogleTest or similar).
+- Version management: set the semantic version once in `CMakeLists.txt` (`project(ArcticOwl VERSION …)`); the build generates `include/arctic_owl/version.h` so the Qt UI and other modules can query `ArcticOwl::Version::kString`.
 
 
 ## Planned Improvements

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ArcticOwl)
+project(ArcticOwl VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,13 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+
+# 配置版本头文件
+configure_file(
+    ${CMAKE_SOURCE_DIR}/include/arctic_owl/version.h.in
+    ${CMAKE_BINARY_DIR}/generated/arctic_owl/version_config.h
+    @ONLY
+)
 
 # 头文件
 set(HEADERS
@@ -38,7 +45,12 @@ set(SOURCES
 add_executable(ArcticOwl ${SOURCES} ${HEADERS})
 
 # 包含目录
-target_include_directories(ArcticOwl PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(ArcticOwl
+    PRIVATE
+        ${CMAKE_BINARY_DIR}/generated
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
 
 # 链接库
 target_link_libraries(ArcticOwl

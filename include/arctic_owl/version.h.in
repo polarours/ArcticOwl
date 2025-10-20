@@ -1,0 +1,15 @@
+#ifndef ARCTICOWL_VERSION_CONFIG_H
+#define ARCTICOWL_VERSION_CONFIG_H
+
+namespace ArcticOwl {
+namespace Version {
+
+inline constexpr int kMajor = @PROJECT_VERSION_MAJOR@;
+inline constexpr int kMinor = @PROJECT_VERSION_MINOR@;
+inline constexpr int kPatch = @PROJECT_VERSION_PATCH@;
+inline constexpr const char kString[] = "@PROJECT_VERSION@";
+
+} // namespace Version
+} // namespace ArcticOwl
+
+#endif // ARCTICOWL_VERSION_CONFIG_H
