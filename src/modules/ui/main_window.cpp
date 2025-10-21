@@ -1,10 +1,18 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
+#include <QtWidgets/QMenuBar>
+#include <QtWidgets/QFormLayout>
+#include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QSpinBox>
 #include <QtGui/QPixmap>
 #include <QtGui/QImage>
 #include <QtGui/QCloseEvent>
 #include <QtCore/QThread>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
+#include <QtCore/QEvent>
 #include <opencv2/opencv.hpp>
 
 #include "modules/ui/main_window.h"
@@ -17,134 +25,133 @@ namespace ArcticOwl {
 namespace Modules {
 namespace UI {
 
-/**
- * @brief 构造函数
- * @details 初始化UI组件和成员变量
- *
- * @param parent 父对象
- */
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
+    , m_systemRunning(false)
+    , m_hasEverStarted(false)
+    , m_videoLabel(nullptr)
+    , m_startButton(nullptr)
+    , m_stopButton(nullptr)
+    , m_intrusionCheckBox(nullptr)
+    , m_fireCheckBox(nullptr)
+    , m_motionCheckBox(nullptr)
+    , m_alertsLog(nullptr)
+    , m_camerasTable(nullptr)
+    , m_cameraIdSpinBox(nullptr)
+    , m_alertsTimer(nullptr)
+    , m_cameraSourceCombo(nullptr)
+    , m_controlGroup(nullptr)
+    , m_cameraGroup(nullptr)
+    , m_detectionGroup(nullptr)
+    , m_alertsGroup(nullptr)
+    , m_cameraIdLabel(nullptr)
+    , m_videoSourceLabel(nullptr)
+    , m_camerasTableLabel(nullptr)
+    , m_settingsMenu(nullptr)
+    , m_helpMenu(nullptr)
+    , m_languageMenu(nullptr)
+    , m_preferencesAction(nullptr)
+    , m_aboutAction(nullptr)
+    , m_languageEnglishAction(nullptr)
+    , m_languageChineseAction(nullptr)
+    , m_languageActionGroup(nullptr)
     , m_videoCapture(nullptr)
     , m_videoProcessor(nullptr)
     , m_networkServer(nullptr)
-    , m_systemRunning(false)
 {
-    // 设置UI
     setupUI();
 
-    // 设置警报更新定时器
     m_alertsTimer = new QTimer(this);
-    m_alertsTimer->setInterval(1000); // 每秒更新一次
-    // 连接定时器信号到更新警报槽
+    m_alertsTimer->setInterval(m_alertIntervalMs);
     connect(m_alertsTimer, &QTimer::timeout, this, &MainWindow::updateAlerts);
 
-    // 设置处理帧的队列连接，确保线程安全
     if (m_videoCapture) {
         connect(m_videoCapture, &Core::VideoCapture::frameReady,
                 this, &MainWindow::updateFrame, Qt::QueuedConnection);
     }
+
+    retranslateUi();
+    updateActionChecks();
 }
 
-/**
- * @brief 析构函数
- * @details 停止系统并释放资源
- */
 MainWindow::~MainWindow()
 {
     stopSystem();
 }
 
-/**
- * @brief 设置UI组件
- * @details 创建并布局所有UI元素，包括视频显示、控制按钮和警报面板
- */
 void MainWindow::setupUI()
 {
-    // 设置窗口属性
-    setWindowTitle(QStringLiteral("ArcticOwl v%1").arg(QString::fromLatin1(ArcticOwl::Version::kString)));
     resize(1200,  800);
 
-    // 创建中央部件
+    setupMenus();
+
     QWidget* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
 
-    // 创建主布局
-    QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
+    auto* mainLayout = new QVBoxLayout(centralWidget);
 
-    // 视频显示区域
-    m_videoLabel = new QLabel("点击\"启动系统\"开始监控", this);
+    m_videoLabel = new QLabel(this);
     m_videoLabel->setAlignment(Qt::AlignCenter);
     m_videoLabel->setStyleSheet("QLabel { background-color : black; color : white; }");
     m_videoLabel->setMinimumSize(800, 600);
     mainLayout->addWidget(m_videoLabel);
 
-    // 控制按钮
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
-    m_startButton = new QPushButton("启动系统", this);
-    m_stopButton = new QPushButton("停止系统", this);
+    auto* buttonLayout = new QHBoxLayout();
+    m_startButton = new QPushButton(this);
+    m_stopButton = new QPushButton(this);
     m_stopButton->setEnabled(false);
 
-    // 添加按钮到布局
     buttonLayout->addWidget(m_startButton);
     buttonLayout->addWidget(m_stopButton);
     buttonLayout->addStretch();
 
     mainLayout->addLayout(buttonLayout);
 
-    // 创建控制面板
-    QGroupBox* controlGroup = new QGroupBox("系统控制", this);
-    QHBoxLayout* controlLayout = new QHBoxLayout(controlGroup);
+    m_controlGroup = new QGroupBox(this);
+    auto* controlLayout = new QHBoxLayout(m_controlGroup);
 
-    // 摄像头控制
-    QGroupBox* cameraGroup = new QGroupBox("摄像头设置", this);
-    QVBoxLayout* cameraLayout = new QVBoxLayout(cameraGroup);
+    m_cameraGroup = new QGroupBox(this);
+    auto* cameraLayout = new QVBoxLayout(m_cameraGroup);
 
-    // 摄像头ID输入
-    QHBoxLayout* idLayout = new QHBoxLayout();
-    idLayout->addWidget(new QLabel("摄像头ID:", this));
+    auto* idLayout = new QHBoxLayout();
+    m_cameraIdLabel = new QLabel(this);
+    idLayout->addWidget(m_cameraIdLabel);
     m_cameraIdSpinBox = new QSpinBox(this);
     m_cameraIdSpinBox->setRange(0, 10);
     m_cameraIdSpinBox->setValue(0);
     idLayout->addWidget(m_cameraIdSpinBox);
     cameraLayout->addLayout(idLayout);
 
-    // 摄像头源选择
-    QHBoxLayout* sourceLayout = new QHBoxLayout();
-    sourceLayout->addWidget(new QLabel("视频源:", this));
+    auto* sourceLayout = new QHBoxLayout();
+    m_videoSourceLabel = new QLabel(this);
+    sourceLayout->addWidget(m_videoSourceLabel);
     m_cameraSourceCombo = new QComboBox(this);
-    m_cameraSourceCombo->addItem("本地摄像头"); // 默认选项
-    m_cameraSourceCombo->addItem("RTSP流"); // 添加RTSP选项
-    m_cameraSourceCombo->addItem("RTMP流"); // 添加RTMP选项
+    m_cameraSourceCombo->addItem(QString());
+    m_cameraSourceCombo->addItem(QString());
+    m_cameraSourceCombo->addItem(QString());
     sourceLayout->addWidget(m_cameraSourceCombo);
     cameraLayout->addLayout(sourceLayout);
 
-    controlLayout->addWidget(cameraGroup);
+    controlLayout->addWidget(m_cameraGroup);
 
-    // 检测控制
-    QGroupBox* detectionGroup = new QGroupBox("检测设置", this);
-    QVBoxLayout* detectionLayout = new QVBoxLayout(detectionGroup);
+    m_detectionGroup = new QGroupBox(this);
+    auto* detectionLayout = new QVBoxLayout(m_detectionGroup);
 
-    // 入侵检测复选框
-    m_intrusionCheckBox = new QCheckBox("入侵检测", this);
+    m_intrusionCheckBox = new QCheckBox(this);
     m_intrusionCheckBox->setChecked(true);
 
-    // 火焰检测复选框
-    m_fireCheckBox = new QCheckBox("火焰检测", this);
+    m_fireCheckBox = new QCheckBox(this);
     m_fireCheckBox->setChecked(true);
 
-    // 运动检测复选框
-    m_motionCheckBox = new QCheckBox("运动检测", this);
+    m_motionCheckBox = new QCheckBox(this);
     m_motionCheckBox->setChecked(true);
 
-    // 添加复选框到布局
     detectionLayout->addWidget(m_intrusionCheckBox);
     detectionLayout->addWidget(m_fireCheckBox);
     detectionLayout->addWidget(m_motionCheckBox);
 
-    controlLayout->addWidget(detectionGroup);
+    controlLayout->addWidget(m_detectionGroup);
 
-    // 连接检测控制信号
     connect(m_intrusionCheckBox, &QCheckBox::toggled,
             this, &MainWindow::onIntrusionDetectionChanged);
     connect(m_fireCheckBox, &QCheckBox::toggled,
@@ -153,126 +160,345 @@ void MainWindow::setupUI()
             this, &MainWindow::onMotionDetectionChanged);
 
     controlLayout->addStretch();
-    mainLayout->addWidget(controlGroup);
+    mainLayout->addWidget(m_controlGroup);
 
-    // 警报面板
-    QGroupBox* alertsGroup = new QGroupBox("安全警报", this);
-    QVBoxLayout* alertsLayout = new QVBoxLayout(alertsGroup);
+    m_alertsGroup = new QGroupBox(this);
+    auto* alertsLayout = new QVBoxLayout(m_alertsGroup);
 
-    // 警报日志文本编辑器
     m_alertsLog = new QTextEdit(this);
     m_alertsLog->setReadOnly(true);
     m_alertsLog->setMaximumHeight(150);
 
     alertsLayout->addWidget(m_alertsLog);
-    mainLayout->addWidget(alertsGroup);
+    mainLayout->addWidget(m_alertsGroup);
 
-    // 摄像头列表
+    m_camerasTableLabel = new QLabel(this);
+    mainLayout->addWidget(m_camerasTableLabel);
+
     m_camerasTable = new QTableWidget(0, 3, this);
-    m_camerasTable->setHorizontalHeaderLabels({"ID", "位置", "状态"});
-    mainLayout->addWidget(new QLabel("摄像头列表:", this));
+    m_camerasTable->setHorizontalHeaderLabels({QString(), QString(), QString()});
     mainLayout->addWidget(m_camerasTable);
 
-    // 连接信号和槽
     connect(m_startButton, &QPushButton::clicked, this, &MainWindow::startSystem);
     connect(m_stopButton, &QPushButton::clicked, this, &MainWindow::stopSystem);
 }
 
-/**
- * @brief 初始化系统组件
- * @details 创建视频捕获、处理和网络服务对象，设置检测选项
- */
+void MainWindow::retranslateUi()
+{
+    const QString version = QString::fromLatin1(ArcticOwl::Version::kString);
+    setWindowTitle(tr("ArcticOwl v%1").arg(version));
+
+    const bool hasPixmap = m_videoLabel && !m_videoLabel->pixmap().isNull();
+
+    if (m_videoLabel) {
+        if (m_systemRunning) {
+            if (!hasPixmap) {
+                m_videoLabel->setText(tr("Acquiring video stream..."));
+            }
+        } else {
+            if (hasPixmap) {
+                m_videoLabel->clear();
+            } else if (m_hasEverStarted) {
+                m_videoLabel->setText(tr("System stopped."));
+            } else {
+                m_videoLabel->setText(tr("Press \"Start System\" to begin monitoring."));
+            }
+        }
+    }
+
+    if (m_startButton) {
+        m_startButton->setText(tr("Start System"));
+    }
+    if (m_stopButton) {
+        m_stopButton->setText(tr("Stop System"));
+    }
+
+    if (m_controlGroup) {
+        m_controlGroup->setTitle(tr("System Control"));
+    }
+    if (m_cameraGroup) {
+        m_cameraGroup->setTitle(tr("Camera Settings"));
+    }
+    if (m_detectionGroup) {
+        m_detectionGroup->setTitle(tr("Detection Settings"));
+    }
+    if (m_alertsGroup) {
+        m_alertsGroup->setTitle(tr("Security Alerts"));
+    }
+
+    if (m_cameraIdLabel) {
+        m_cameraIdLabel->setText(tr("Camera ID:"));
+    }
+    if (m_videoSourceLabel) {
+        m_videoSourceLabel->setText(tr("Video Source:"));
+    }
+
+    if (m_cameraSourceCombo) {
+        m_cameraSourceCombo->setItemText(0, tr("Local Camera"));
+        m_cameraSourceCombo->setItemText(1, tr("RTSP Stream"));
+        m_cameraSourceCombo->setItemText(2, tr("RTMP Stream"));
+    }
+
+    if (m_intrusionCheckBox) {
+        m_intrusionCheckBox->setText(tr("Intrusion Detection"));
+    }
+    if (m_fireCheckBox) {
+        m_fireCheckBox->setText(tr("Fire Detection"));
+    }
+    if (m_motionCheckBox) {
+        m_motionCheckBox->setText(tr("Motion Detection"));
+    }
+
+    if (m_camerasTableLabel) {
+        m_camerasTableLabel->setText(tr("Camera List:"));
+    }
+    if (m_camerasTable) {
+        m_camerasTable->setHorizontalHeaderLabels({
+            tr("ID"),
+            tr("Location"),
+            tr("Status")});
+    }
+
+    if (m_settingsMenu) {
+        m_settingsMenu->setTitle(tr("Settings"));
+    }
+    if (m_preferencesAction) {
+        m_preferencesAction->setText(tr("Preferences..."));
+    }
+    if (m_languageMenu) {
+        m_languageMenu->setTitle(tr("Language"));
+    }
+    if (m_languageEnglishAction) {
+        m_languageEnglishAction->setText(tr("English"));
+    }
+    if (m_languageChineseAction) {
+        m_languageChineseAction->setText(tr("Chinese"));
+    }
+    if (m_helpMenu) {
+        m_helpMenu->setTitle(tr("Help"));
+    }
+    if (m_aboutAction) {
+        m_aboutAction->setText(tr("About ArcticOwl"));
+    }
+
+    updateActionChecks();
+}
+
+void MainWindow::updateActionChecks()
+{
+    if (m_languageEnglishAction) {
+        m_languageEnglishAction->setChecked(m_currentLanguage == Language::English);
+    }
+    if (m_languageChineseAction) {
+        m_languageChineseAction->setChecked(m_currentLanguage == Language::Chinese);
+    }
+}
+
+bool MainWindow::loadLanguage(Language language)
+{
+    if (m_currentLanguage == language && language == Language::English) {
+        return true;
+    }
+
+    qApp->removeTranslator(&m_translator);
+
+    bool success = true;
+
+    if (language == Language::Chinese) {
+        const QString resourcePath = QStringLiteral(":/i18n/arcticowl_zh_CN.qm");
+        success = m_translator.load(resourcePath);
+        if (success) {
+            qApp->installTranslator(&m_translator);
+        } else {
+            QMessageBox::warning(this, tr("Warning"), tr("Chinese translation file is missing."));
+            language = Language::English;
+        }
+    }
+
+    m_currentLanguage = language;
+    retranslateUi();
+    return success;
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    QMainWindow::changeEvent(event);
+
+    if (!event) {
+        return;
+    }
+
+    if (event->type() == QEvent::LanguageChange || event->type() == QEvent::LocaleChange) {
+        retranslateUi();
+    }
+}
+
+void MainWindow::setupMenus()
+{
+    m_settingsMenu = menuBar()->addMenu(QString());
+    m_preferencesAction = m_settingsMenu->addAction(QString());
+    connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::openSettingsDialog);
+
+    setupLanguageMenu();
+
+    m_helpMenu = menuBar()->addMenu(QString());
+    m_aboutAction = m_helpMenu->addAction(QString());
+    connect(m_aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
+}
+
+void MainWindow::setupLanguageMenu()
+{
+    m_languageMenu = m_settingsMenu->addMenu(QString());
+
+    m_languageActionGroup = new QActionGroup(this);
+    m_languageActionGroup->setExclusive(true);
+
+    m_languageEnglishAction = m_languageMenu->addAction(QString());
+    m_languageEnglishAction->setCheckable(true);
+
+    m_languageChineseAction = m_languageMenu->addAction(QString());
+    m_languageChineseAction->setCheckable(true);
+
+    m_languageActionGroup->addAction(m_languageEnglishAction);
+    m_languageActionGroup->addAction(m_languageChineseAction);
+
+    connect(m_languageEnglishAction, &QAction::triggered, this, [this]() {
+        loadLanguage(Language::English);
+    });
+
+    connect(m_languageChineseAction, &QAction::triggered, this, [this]() {
+        loadLanguage(Language::Chinese);
+    });
+}
+
+void MainWindow::openSettingsDialog()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Preferences"));
+    dialog.setModal(true);
+
+    auto* layout = new QFormLayout(&dialog);
+
+    auto* portSpin = new QSpinBox(&dialog);
+    portSpin->setRange(1024, 65535);
+    portSpin->setValue(m_networkPort);
+    layout->addRow(tr("Network Port:"), portSpin);
+
+    auto* intervalSpin = new QSpinBox(&dialog);
+    intervalSpin->setRange(200, 10000);
+    intervalSpin->setSingleStep(100);
+    intervalSpin->setValue(m_alertIntervalMs);
+    layout->addRow(tr("Alert Refresh Interval (ms):"), intervalSpin);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
+    layout->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        const bool portChanged = (m_networkPort != portSpin->value());
+        m_networkPort = portSpin->value();
+        m_alertIntervalMs = intervalSpin->value();
+        m_alertsTimer->setInterval(m_alertIntervalMs);
+
+        if (m_systemRunning && portChanged) {
+            QMessageBox::information(this,
+                                     tr("Settings Updated"),
+                                     tr("The network port will take effect the next time the system starts."));
+        }
+    }
+}
+
+void MainWindow::showAboutDialog()
+{
+    const QString aboutText = tr(
+        "ArcticOwl v%1\n\n"
+        "Real-time video monitoring and alerting demo.\n"
+        "Built with Qt 6, OpenCV, and Boost.Asio.\n"
+        "Project site: github.com/polarours/ArcticOwl")
+        .arg(QString::fromLatin1(ArcticOwl::Version::kString));
+
+    QMessageBox::about(this, tr("About ArcticOwl"), aboutText);
+}
+
 void MainWindow::initializeSystem()
 {
     try {
-        // 根据选择的视频源创建视频捕获对象
         int sourceIndex = m_cameraSourceCombo->currentIndex();
         if (sourceIndex == 0) {
-            // 本地摄像头
             m_videoCapture = new Core::VideoCapture(nullptr, m_cameraIdSpinBox->value());
         } else if (sourceIndex == 1) {
-            // RTSP流
-            QString rtspUrl = QInputDialog::getText(this, "RTSP流地址", "请输入RTSP流地址:");
+            QString rtspUrl = QInputDialog::getText(this,
+                                                   tr("RTSP Stream URL"),
+                                                   tr("Enter the RTSP stream URL:"));
             if (rtspUrl.isEmpty()) {
-                throw std::runtime_error("RTSP流地址不能为空");
+                throw std::runtime_error(tr("RTSP stream URL cannot be empty.").toUtf8().toStdString());
             }
             m_videoCapture = new Core::VideoCapture(nullptr, -1, rtspUrl.toStdString());
         } else if (sourceIndex == 2) {
-            // RTMP流
-            QString rtmpUrl = QInputDialog::getText(this, "RTMP流地址", "请输入RTMP流地址:");
+            QString rtmpUrl = QInputDialog::getText(this,
+                                                   tr("RTMP Stream URL"),
+                                                   tr("Enter the RTMP stream URL:"));
             if (rtmpUrl.isEmpty()) {
-                throw std::runtime_error("RTMP流地址不能为空");
+                throw std::runtime_error(tr("RTMP stream URL cannot be empty.").toUtf8().toStdString());
             }
             m_videoCapture = new Core::VideoCapture(nullptr, -1, "", rtmpUrl.toStdString());
         }
 
-        // 初始化视频处理器
         m_videoProcessor = new Core::VideoProcessor();
-        // 初始化网络服务器，监听端口8080
-        m_networkServer = new Network::NetworkServer(8080);
-        // 设置警报更新定时器
-        m_alertsTimer->setInterval(1000); // 每秒更新一次警报
+        m_networkServer = new Network::NetworkServer(m_networkPort);
 
-        // 设置检测选项，默认全部启用
         if (m_videoProcessor) {
             m_videoProcessor->setIntrusionDetection(m_intrusionCheckBox->isChecked());
             m_videoProcessor->setFireDetection(m_fireCheckBox->isChecked());
             m_videoProcessor->setMotionDetection(m_motionCheckBox->isChecked());
         }
 
-        // 连接视频帧信号，使用队列连接确保线程安全
         if (m_videoCapture) {
             connect(m_videoCapture, &Core::VideoCapture::frameReady,
                     this, &MainWindow::updateFrame, Qt::QueuedConnection);
         }
     } catch (const std::exception& e) {
-        std::cerr << "初始化系统时发生错误: " << e.what() << std::endl;
-        QMessageBox::critical(this, "错误", QString("初始化系统时发生错误: %1").arg(e.what()));
+        std::cerr << "Failed to initialize system: " << e.what() << std::endl;
+        QMessageBox::critical(this,
+                              tr("Error"),
+                              tr("Failed to initialize the system: %1").arg(QString::fromUtf8(e.what())));
         throw;
     } catch (...) {
-        std::cerr << "初始化系统时发生未知错误" << std::endl;
-        QMessageBox::critical(this, "错误", "初始化系统时发生未知错误");
+        std::cerr << "Unexpected error while initializing system" << std::endl;
+        QMessageBox::critical(this,
+                              tr("Error"),
+                              tr("An unexpected error occurred while initializing the system."));
         throw;
     }
 }
 
-/**
- * @brief 清理系统资源
- * @details 停止视频捕获、处理和网络服务，释放资源
- */
 void MainWindow::cleanupSystem()
 {
     try {
-        // 停止视频采集
         if (m_videoCapture) {
             m_videoCapture->stopVideoCaptureSystem();
             delete m_videoCapture;
             m_videoCapture = nullptr;
         }
 
-        // 清理视频处理器
         if (m_videoProcessor) {
             delete m_videoProcessor;
             m_videoProcessor = nullptr;
         }
 
-        // 停止网络服务器
         if (m_networkServer) {
             m_networkServer->stopNetworkSystem();
             delete m_networkServer;
             m_networkServer = nullptr;
         }
     } catch (const std::exception& e) {
-        std::cerr << "清理系统时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to clean up system: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "清理系统时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while cleaning up system" << std::endl;
     }
 }
 
-/**
- * @brief 启动系统
- * @details 初始化并启动视频捕获、处理和网络服务
- */
 void MainWindow::startSystem()
 {
     if (m_systemRunning) return;
@@ -280,38 +506,43 @@ void MainWindow::startSystem()
     try {
         initializeSystem();
 
-        // 启动视频捕获系统
         if (m_videoCapture && !m_videoCapture->startVideoCaptureSystem()) {
-            QMessageBox::critical(this, "错误", "无法启动摄像头");
+            QMessageBox::critical(this,
+                                  tr("Error"),
+                                  tr("Failed to start the camera."));
             cleanupSystem();
             return;
         }
 
-        // 启动网络服务器
         if (m_networkServer) {
             m_networkServer->startNetworkSystem();
         }
 
-        // 更新UI状态
         m_systemRunning = true;
+        m_hasEverStarted = true;
         m_startButton->setEnabled(false);
         m_stopButton->setEnabled(true);
 
-        // 启动警报定时器
-        m_alertsTimer->start(1000); // 每秒更新一次警报
+        m_alertsTimer->start(m_alertIntervalMs);
 
-        m_videoLabel->setText("正在获取视频流...");
+        if (m_videoLabel->pixmap().isNull()) {
+            m_videoLabel->setText(tr("Acquiring video stream..."));
+        }
     } catch (const std::exception& e) {
-        std::cerr << "启动系统时发生错误: " << e.what() << std::endl;
-        QMessageBox::critical(this, "错误", QString("启动系统时发生错误: %1").arg(e.what()));
-        
+        std::cerr << "Failed to start system: " << e.what() << std::endl;
+        QMessageBox::critical(this,
+                              tr("Error"),
+                              tr("Failed to start the system: %1").arg(QString::fromUtf8(e.what())));
+
         cleanupSystem();
         m_systemRunning = false;
         m_startButton->setEnabled(true);
         m_stopButton->setEnabled(false);
     } catch (...) {
-        std::cerr << "启动系统时发生未知错误" << std::endl;
-        QMessageBox::critical(this, "错误", "启动系统时发生未知错误");
+        std::cerr << "Unexpected error while starting system" << std::endl;
+        QMessageBox::critical(this,
+                              tr("Error"),
+                              tr("An unexpected error occurred while starting the system."));
         
         cleanupSystem();
         m_systemRunning = false;
@@ -321,8 +552,7 @@ void MainWindow::startSystem()
 }
 
 /**
- * @brief 停止系统
- * @details 停止视频捕获、处理和网络服务，清理资源
+ * Stops capture, processing, and networking services, then releases resources.
  */
 void MainWindow::stopSystem()
 {
@@ -337,178 +567,130 @@ void MainWindow::stopSystem()
         m_systemRunning = false;
         m_startButton->setEnabled(true);
         m_stopButton->setEnabled(false);
-        m_videoLabel->setText("系统已停止");
+        m_videoLabel->clear();
+        m_videoLabel->setText(tr("System stopped."));
     } catch (const std::exception& e) {
-        std::cerr << "停止系统时发生错误: " << e.what() << std::endl;
-        QMessageBox::warning(this, "警告", QString("停止系统时发生错误: %1").arg(e.what()));
+        std::cerr << "Failed to stop system: " << e.what() << std::endl;
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Failed to stop the system: %1").arg(QString::fromUtf8(e.what())));
     } catch (...) {
-        std::cerr << "停止系统时发生未知错误" << std::endl;
-        QMessageBox::warning(this, "警告", "停止系统时发生未知错误");
+        std::cerr << "Unexpected error while stopping system" << std::endl;
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("An unexpected error occurred while stopping the system."));
     }
 }
 
-/**
- * @brief 关闭事件处理
- * @details 在窗口关闭时确保系统正确停止
- *
- * @param event 关闭事件
- */
 void MainWindow::updateFrame(const cv::Mat& frame)
 {
     try {
-        // 检查输入帧是否有效
         if (frame.empty()) {
             return;
         }
 
-        // 使用拷贝以便绘制检测结果
         cv::Mat processedFrame = frame.clone();
 
-        // 进行检测并在图像上绘制结果
         if (m_videoProcessor) {
             auto results = m_videoProcessor->processFrame(frame);
             for (const auto& r : results) {
-                // 选择颜色基于检测类型
-                cv::Scalar color(0, 255, 0); // 默认绿
+                cv::Scalar color(0, 255, 0);
                 if (r.type == Core::VideoProcessor::DetectionResult::FIRE) color = cv::Scalar(0, 0, 255);
                 if (r.type == Core::VideoProcessor::DetectionResult::INTRUSION) color = cv::Scalar(255, 0, 0);
-                // 绘制边界框
                 cv::rectangle(processedFrame, r.boundingBox, color, 2);
-                // 绘制标签和置信度
                 std::string label = r.description + " (" + std::to_string(r.confidence) + ")";
-                int baseline = 0;
-                cv::Size textSize __attribute__((unused)) = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
                 cv::Point textOrg(r.boundingBox.x, std::max(0, r.boundingBox.y - 5));
                 cv::putText(processedFrame, label, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
             }
         }
 
-        // 将处理后的帧发送到网络服务器
         if (m_networkServer) {
             m_networkServer->broadcastFrame(processedFrame);
         }
 
-        // 将 cv::Mat 转换为 QImage 并显示
         cv::Mat rgbFrame;
         if (processedFrame.channels() == 3) {
             cv::cvtColor(processedFrame, rgbFrame, cv::COLOR_BGR2RGB);
         } else {
             cv::cvtColor(processedFrame, rgbFrame, cv::COLOR_GRAY2RGB);
         }
-        // 转换为 QImage
         QImage qimg(rgbFrame.data, rgbFrame.cols, rgbFrame.rows,
                     static_cast<int>(rgbFrame.step), QImage::Format_RGB888);
 
-        // 在标签中显示图像，保持纵横比
         m_videoLabel->setPixmap(QPixmap::fromImage(qimg).scaled(
             m_videoLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     } catch (const cv::Exception& e) {
-        std::cerr << "OpenCV错误: " << e.what() << std::endl;
-        // 遇到OpenCV错误时停止系统
+        std::cerr << "OpenCV error: " << e.what() << std::endl;
         QMetaObject::invokeMethod(this, "stopSystem", Qt::QueuedConnection);
     } catch (const std::exception& e) {
-        std::cerr << "更新视频帧时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to update frame: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "更新视频帧时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while updating frame" << std::endl;
     }
 }
 
-/**
- * @brief 更新警报信息
- * @details 定期检查系统状态并更新警报日志
- */
 void MainWindow::updateAlerts()
 {
     try {
-        // 更新警报日志，这里只是模拟一些警报信息
         static int alertCount = 0;
-        // 模拟警报更新逻辑
-        if (m_systemRunning && (alertCount % 10 == 0)) {
-            QString alertMsg = QString("[%1] 系统运行正常").arg(QTime::currentTime().toString());
+        if (m_systemRunning && (alertCount % 10 == 0) && m_alertsLog) {
+            const QString statusTemplate = tr("[%1] System running normally");
+            const QString alertMsg = statusTemplate.arg(QTime::currentTime().toString());
             m_alertsLog->append(alertMsg);
         }
         alertCount++;
     } catch (const std::exception& e) {
-        std::cerr << "更新警报时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to update alerts: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "更新警报时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while updating alerts" << std::endl;
     }
 }
 
-/**
- * @brief 入侵检测选项更改处理
- * @details 启用或禁用入侵检测功能
- *
- * @param enabled 是否启用入侵检测
- */
 void MainWindow::onIntrusionDetectionChanged(bool enabled)
 {
     try {
-        // 设置入侵检测选项
         if (m_videoProcessor) {
             m_videoProcessor->setIntrusionDetection(enabled);
         }
     } catch (const std::exception& e) {
-        std::cerr << "设置入侵检测时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to toggle intrusion detection: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "设置入侵检测时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while toggling intrusion detection" << std::endl;
     }
 }
 
-/**
- * @brief 火焰检测选项更改处理
- * @details 启用或禁用火焰检测功能
- *
- * @param enabled 是否启用火焰检测
- */
 void MainWindow::onFireDetectionChanged(bool enabled)
 {
     try {
-        // 设置火焰检测选项
         if (m_videoProcessor) {
             m_videoProcessor->setFireDetection(enabled);
         }
     } catch (const std::exception& e) {
-        std::cerr << "设置火焰检测时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to toggle fire detection: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "设置火焰检测时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while toggling fire detection" << std::endl;
     }
 }
 
-/**
- * @brief 运动检测选项更改处理
- * @details 启用或禁用运动检测功能
- *
- * @param enabled 是否启用运动检测
- */
 void MainWindow::onMotionDetectionChanged(bool enabled)
 {
     try {
-        // 设置运动检测选项
         if (m_videoProcessor) {
             m_videoProcessor->setMotionDetection(enabled);
         }
     } catch (const std::exception& e) {
-        std::cerr << "设置运动检测时发生错误: " << e.what() << std::endl;
+        std::cerr << "Failed to toggle motion detection: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "设置运动检测时发生未知错误" << std::endl;
+        std::cerr << "Unexpected error while toggling motion detection" << std::endl;
     }
 }
 
-/**
- * @brief 关闭事件处理
- * @details 在窗口关闭时确保系统已停止并清理资源
- *
- * @param event 关闭事件
- */
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    // 在窗口关闭时确保系统已停止并清理资源
     if (m_systemRunning) {
         stopSystem();
     }
 
-    // 接受关闭事件并转发给基类处理
     event->accept();
     QMainWindow::closeEvent(event);
 }

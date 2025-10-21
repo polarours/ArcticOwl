@@ -1,30 +1,33 @@
 cmake_minimum_required(VERSION 3.16)
-project(ArcticOwl VERSION 0.1.1 LANGUAGES CXX)
 
+# Define the project
+project(ArcticOwl VERSION 0.1.2 LANGUAGES CXX)
+
+# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 设置编译器选项
+# set compiler flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2")
 
-# 查找必要的库
+# search for required packages
 find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui imgcodecs videoio video features2d)
 find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network LinguistTools)
 
-# 启用Qt的MOC、UIC和RCC
+# include directories for Qt
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-# 配置版本头文件
+# Generate version header file
 configure_file(
     ${CMAKE_SOURCE_DIR}/include/arctic_owl/version.h.in
     ${CMAKE_BINARY_DIR}/generated/arctic_owl/version_config.h
     @ONLY
 )
 
-# 头文件
+# header files
 set(HEADERS
     src/core/video_capture.h
     src/core/video_processor.h
@@ -32,7 +35,7 @@ set(HEADERS
     src/modules/ui/main_window.h
 )
 
-# 源文件
+# source files
 set(SOURCES
     src/main.cpp
     src/core/video_capture.cpp
@@ -41,10 +44,26 @@ set(SOURCES
     src/modules/ui/main_window.cpp
 )
 
-# 创建可执行文件
+# Define the executable
 add_executable(ArcticOwl ${SOURCES} ${HEADERS})
 
-# 包含目录
+qt_add_translations(ArcticOwl
+    TS_FILES
+        resources/translations/arcticowl_zh_CN.ts
+    QM_FILES_OUTPUT_VARIABLE ArcticOwl_QM_FILES
+)
+
+foreach(qm_file IN LISTS ArcticOwl_QM_FILES)
+    get_filename_component(qm_name "${qm_file}" NAME)
+    set_source_files_properties("${qm_file}" PROPERTIES QT_RESOURCE_ALIAS "${qm_name}")
+endforeach()
+
+qt_add_resources(ArcticOwl arcticowl_translations
+    PREFIX "/i18n"
+    FILES ${ArcticOwl_QM_FILES}
+)
+
+# Include directories
 target_include_directories(ArcticOwl
     PRIVATE
         ${CMAKE_BINARY_DIR}/generated
@@ -52,7 +71,7 @@ target_include_directories(ArcticOwl
         ${CMAKE_SOURCE_DIR}/src
 )
 
-# 链接库
+# Link libraries
 target_link_libraries(ArcticOwl
         ${OpenCV_LIBS}
         ${Boost_LIBRARIES}
@@ -60,5 +79,5 @@ target_link_libraries(ArcticOwl
         pthread
 )
 
-# 安装规则
+# Install target
 install(TARGETS ArcticOwl DESTINATION bin)

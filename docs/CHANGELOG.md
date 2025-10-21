@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No notable changes yet._
 
+## [0.1.2] - 2025-10-21
+
+### Added
+- Language menu in the main window to toggle English/Chinese text at runtime.
+
+### Changed
+- Migrated all UI labels, dialogs, and alerts to the shared translation table.
+- Documented the new language toggle in both README files.
+
 ## [0.1.1] - 2025-10-20
 
 ### Added

@@ -10,6 +10,7 @@ Language: English | [中文](README_zh_CN.md)
 - [Highlights](#highlights)
 - [Architecture](#architecture)
 - [Requirements](#requirements)
+- [Platform Setup](#platform-setup)
 - [Build and Run](#build-and-run)
 - [Network Interface](#network-interface)
 - [Project Structure](#project-structure)
@@ -22,7 +23,7 @@ Language: English | [中文](README_zh_CN.md)
 ## Overview
 ArcticOwl is a desktop application designed for security and industrial monitoring prototypes. It ingests live video from cameras or IP streams, applies classic computer-vision detectors, overlays results in a Qt UI, and broadcasts processed frames plus alert messages to TCP clients.
 
-Current release: **v0.1.1**
+Current release: **v0.1.2**
 
 
 ## Highlights
@@ -31,6 +32,7 @@ Current release: **v0.1.1**
 - **Live overlay**: bounding boxes and labels rendered directly in the Qt window.
 - **TCP broadcasting**: JPEG frames and alert strings pushed to all connected clients.
 - **Portable build**: CMake-based, tested mainly on Linux but kept cross-platform friendly.
+- **Language toggle**: switch between English and Chinese UI text at runtime.
 
 
 ## Architecture
@@ -43,30 +45,85 @@ Current release: **v0.1.1**
 
 Data path: **Video Source → VideoCapture → VideoProcessor → UI Overlay → NetworkServer**.
 
+Extended rationale and design notes now live in `docs/architecture/system_overview.md`.
+
 
 ## Requirements
-- CMake 3.16 or newer, C++17 toolchain.
-- Qt 6: Core, Widgets, Network modules.
-- OpenCV: core, imgproc, highgui, imgcodecs, videoio, video, features2d.
-- Boost: system, thread.
-- pthread (provided by the OS).
+- CMake 3.16 or newer, C++17-capable compiler.
+- Qt 6 modules: Core, Widgets, Network.
+- OpenCV components: core, imgproc, highgui, imgcodecs, videoio, video, features2d.
+- Boost libraries: system, thread.
+- pthread (ships with POSIX systems; bundled on Windows via toolchain).
 
-Debian/Ubuntu quick setup:
+> **Streaming note:** RTSP/RTMP playback requires OpenCV builds with FFmpeg or GStreamer enabled. If vendor packages lack codec support, install multimedia extras or rebuild OpenCV with the desired backends.
+
+## Platform Setup
+
+### Ubuntu 22.04 LTS (Debian family)
 ```bash
-# Toolchain
 sudo apt update
-sudo apt install -y build-essential cmake git
 
-# Qt 6 (Core/Widgets/Network)
-sudo apt install -y qt6-base-dev
+# Build essentials and version control
+sudo apt install -y build-essential cmake git pkg-config
 
-# OpenCV with FFmpeg support
-sudo apt install -y libopencv-dev
+# Qt 6 widgets stack
+sudo apt install -y qt6-base-dev qt6-base-dev-tools qt6-tools-dev-tools
 
-# Boost libraries
+# OpenCV with FFmpeg/GStreamer integration
+sudo apt install -y libopencv-dev libopencv-video-dev gstreamer1.0-libav
+
+# Boost libraries and threading runtime
 sudo apt install -y libboost-system-dev libboost-thread-dev
+
+# Optional: Qt translation tools for editing .ts files
+sudo apt install -y qt6-tools-dev qt6-tools-dev-tools
 ```
-Note: RTSP/RTMP playback needs an OpenCV build with FFmpeg or GStreamer enabled. If the stock packages cannot handle your stream, install the appropriate multimedia plugins or rebuild OpenCV.
+If you hit "Qt platform plugin 'xcb'" errors, add: `sudo apt install -y libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0`.
+
+### Manjaro / Arch Linux
+```bash
+sudo pacman -Syu --needed base-devel git cmake pkgconf
+
+# Qt 6 base libraries and tools
+sudo pacman -S --needed qt6-base qt6-tools qt6-translations
+
+# OpenCV with codec support
+sudo pacman -S --needed opencv ffmpeg gstreamer libgstreamer
+
+# Boost components
+sudo pacman -S --needed boost
+```
+For systems using `yay` or another AUR helper, prefer repository packages first; only resort to community builds if codecs are missing.
+
+### macOS 13+ (Apple Silicon or Intel)
+```bash
+brew update
+brew install cmake git qt opencv boost
+
+# Ensure Qt binaries are discoverable by CMake
+echo 'export CMAKE_PREFIX_PATH="$(brew --prefix qt)"' >> ~/.zshrc
+source ~/.zshrc
+```
+When launching the app outside the build tree, export `QT_PLUGIN_PATH=$(brew --prefix qt)/lib/qt/plugins` so Qt can locate platform plugins.
+
+### Windows 11 (MSVC + vcpkg)
+1. Install **Visual Studio 2022** with the "Desktop development with C++" workload.
+2. Install **CMake** and **Git for Windows**.
+3. Clone and bootstrap vcpkg:
+  ```powershell
+  git clone https://github.com/microsoft/vcpkg.git C:\tools\vcpkg
+  C:\tools\vcpkg\bootstrap-vcpkg.bat
+  ```
+4. Install dependencies (x64 triplet shown):
+  ```powershell
+  C:\tools\vcpkg\vcpkg.exe install qtbase opencv4 boost-system boost-thread --triplet x64-windows
+  ```
+5. Configure with the vcpkg toolchain:
+  ```powershell
+  cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
+  cmake --build build --config Release --parallel
+  ```
+If OpenCV lacks FFmpeg, add `ffmpeg[avcodec,avformat,avutil]` via vcpkg or enable GStreamer support.
 
 
 ## Build and Run
