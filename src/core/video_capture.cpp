@@ -5,8 +5,7 @@
 
 #include "video_capture.h"
 
-namespace ArcticOwl {
-namespace Core {
+namespace ArcticOwl::Core {
 
 VideoCapture::VideoCapture(QObject* parent, int camera_id, const std::string& rtsp_url, const std::string& rtmp_url)
     : QObject(parent)
@@ -157,5 +156,4 @@ void VideoCapture::captureLoop() {
     }
 }
 
-} // namespace Core
-} // namespace ArcticOwl
+}

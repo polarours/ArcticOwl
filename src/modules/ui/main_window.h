@@ -1,5 +1,4 @@
-#ifndef ARCTICOWL_MODULES_UI_MAIN_WINDOW_H
-#define ARCTICOWL_MODULES_UI_MAIN_WINDOW_H
+#pragma once
 
 #include <QMainWindow>
 #include <QWidget>
@@ -34,8 +33,6 @@ class NetworkServer;
 
 namespace ArcticOwl::Modules::UI {
 
-// Main application window class.
-// This class manages the UI components and interactions.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -120,6 +117,4 @@ private:
     Network::NetworkServer* m_networkServer;
 };
 
-} // namespace ArcticOwl::Modules::UI
-
-#endif // ARCTICOWL_MODULES_UI_MAIN_WINDOW_H
+}

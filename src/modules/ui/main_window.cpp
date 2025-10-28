@@ -21,9 +21,7 @@
 #include "modules/network/network_server.h"
 #include "arctic_owl/version.h"
 
-namespace ArcticOwl {
-namespace Modules {
-namespace UI {
+namespace ArcticOwl::Modules::UI {
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -551,9 +549,6 @@ void MainWindow::startSystem()
     }
 }
 
-/**
- * Stops capture, processing, and networking services, then releases resources.
- */
 void MainWindow::stopSystem()
 {
     if (!m_systemRunning) {
@@ -695,6 +690,4 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QMainWindow::closeEvent(event);
 }
 
-} // namespace UI
-} // namespace Modules
-} // namespace ArcticOwl
+}

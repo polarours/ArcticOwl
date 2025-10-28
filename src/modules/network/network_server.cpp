@@ -2,9 +2,7 @@
 
 #include "network_server.h"
 
-namespace ArcticOwl {
-namespace Modules {
-namespace Network {
+namespace ArcticOwl::Modules::Network {
 
 NetworkServer::NetworkServer(int port)
     : m_acceptor(m_ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
@@ -146,6 +144,4 @@ void NetworkServer::sendAlert(const std::string& alertMessage)
     }
 }
     
-} // namespace Network
-} // namespace Modules
-} // namespace ArcticOwl
+}

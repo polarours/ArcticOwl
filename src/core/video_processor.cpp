@@ -4,8 +4,7 @@
 
 #include "video_processor.h"
 
-namespace ArcticOwl {
-namespace Core {
+namespace ArcticOwl::Core {
 
 VideoProcessor::VideoProcessor()
     : m_intrusionDetection(true)
@@ -295,5 +294,4 @@ void VideoProcessor::updateAccumulatedBackground(const cv::Mat& frame) {
     }
 }
 
-} // namespace Core
-} // namespace ArcticOwl
+}

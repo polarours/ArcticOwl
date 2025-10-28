@@ -1,5 +1,4 @@
-#ifndef ARCTICOWL_CORE_VIDEO_CAPTURE_H
-#define ARCTICOWL_CORE_VIDEO_CAPTURE_H
+#pragma once
 
 #include <QObject>
 #include <atomic>
@@ -8,8 +7,7 @@
 #include <mutex>
 #include <opencv2/opencv.hpp>
 
-namespace ArcticOwl {
-namespace Core {
+namespace ArcticOwl::Core {
 
 class VideoCapture : public QObject
 {
@@ -45,7 +43,4 @@ private:
     const int m_frameIntervalMs = 33;
 };
 
-} // namespace Core
-} // namespace ArcticOwl
-
-#endif // ARCTICOWL_CORE_VIDEO_CAPTURE_H
+}

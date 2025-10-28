@@ -1,5 +1,4 @@
-#ifndef ARCTICOWL_MODULES_NETWORK_NETWORK_SERVER_H
-#define ARCTICOWL_MODULES_NETWORK_NETWORK_SERVER_H
+#pragma once
 
 #include <boost/asio.hpp>
 #include <thread>
@@ -11,9 +10,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 
-namespace ArcticOwl {
-namespace Modules {
-namespace Network {
+namespace ArcticOwl::Modules::Network {
 
 class NetworkServer {
 public:
@@ -39,8 +36,4 @@ private:
     short m_port;
 };
 
-} // namespace Network
-} // namespace Modules
-} // namespace ArcticOwl
-
-#endif // ARCTICOWL_MODULES_NETWORK_NETWORK_SERVER_H
+}

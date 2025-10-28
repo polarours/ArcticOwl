@@ -1,23 +1,29 @@
 # ArcticOwl
 
-Language: English | [中文](README_zh_CN.md)
+Language: English | [中文](README.zh_CN.md)
 
 > Real-time video monitoring and alerting desktop app powered by Qt 6, OpenCV, and Boost.Asio.
 
 
 ## Contents
-- [Overview](#overview)
-- [Highlights](#highlights)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Platform Setup](#platform-setup)
-- [Build and Run](#build-and-run)
-- [Network Interface](#network-interface)
-- [Project Structure](#project-structure)
-- [FAQ](#faq)
-- [Development Notes](#development-notes)
-- [Planned Improvements](#planned-improvements)
-- [License](#license)
+- [ArcticOwl](#arcticowl)
+  - [Contents](#contents)
+  - [Overview](#overview)
+  - [Highlights](#highlights)
+  - [Architecture](#architecture)
+  - [Requirements](#requirements)
+  - [Platform Setup](#platform-setup)
+    - [Ubuntu 22.04 LTS (Debian family)](#ubuntu-2204-lts-debian-family)
+    - [Manjaro / Arch Linux](#manjaro--arch-linux)
+    - [macOS 13+ (Apple Silicon or Intel)](#macos-13-apple-silicon-or-intel)
+    - [Windows 11 (MSVC + vcpkg)](#windows-11-msvc--vcpkg)
+  - [Build and Run](#build-and-run)
+  - [Network Interface](#network-interface)
+  - [Project Structure](#project-structure)
+  - [FAQ](#faq)
+  - [Development Notes](#development-notes)
+  - [Planned Improvements](#planned-improvements)
+  - [License](#license)
 
 
 ## Overview

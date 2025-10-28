@@ -1,12 +1,10 @@
-#ifndef ARCTICOWL_CORE_VIDEO_PROCESSOR_H
-#define ARCTICOWL_CORE_VIDEO_PROCESSOR_H
+#pragma once
 
 #include <vector>
 #include <string>
 #include <opencv2/opencv.hpp>
 
-namespace ArcticOwl {
-namespace Core {
+namespace ArcticOwl::Core {
 
 class VideoProcessor {
 public:
@@ -52,7 +50,4 @@ private:
 
 };
 
-} // namespace Core
-} // namespace ArcticOwl
-
-#endif // ARCTICOWL_CORE_VIDEO_PROCESSOR_H
+}
